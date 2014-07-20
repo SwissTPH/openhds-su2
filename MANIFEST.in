@@ -1,0 +1,2 @@
+recursive-include su2/templates *
+recursive-include su2/static *
