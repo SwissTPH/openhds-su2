@@ -1,0 +1,52 @@
+{
+    "all_forms": {
+        "death": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "individual": "INDIVIDUAL_ID",
+            "location": "LEFT(DEATH_REGISTRATION_CORE.VISIT_ID,9)",
+            "name": "DEATH_REGISTRATION_CORE"
+        },
+        "migrationIn": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "individual": "INDIVIDUAL_INFO_INDIVIDUAL_ID",
+            "location": "LOCATION_ID",
+            "migration_type": "MIGRATION_TYPE",
+            "name": "IN_MIGRATION_CORE"
+        },
+        "migrationOut": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "individual": "INDIVIDUAL_ID",
+            "location": "LEFT(OUT_MIGRATION_REGISTRATION_CORE.VISIT_ID,9)",
+            "name": "OUT_MIGRATION_REGISTRATION_CORE",
+            "reason": "REASON_FOR_OUT_MIGRATION",
+            "is_internal": "WITHIN_RUSINGA"
+        },
+        "pregnancyObservation": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "individual": "INDIVIDUAL_ID",
+            "location": "LEFT(PREGNANCY_OBSERVATION_CORE.VISIT_ID,9)",
+            "name": "PREGNANCY_OBSERVATION_CORE"
+        },
+        "pregnancyOutcome": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "individual": "MOTHER_ID",
+            "location": "LEFT(PREGNANCY_OUTCOME_CORE.VISIT_ID,9)",
+            "name": "PREGNANCY_OUTCOME_CORE"
+        },
+        "visit": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "lat": "COORDINATES_LAT",
+            "location": "LOCATION_ID",
+            "lon": "COORDINATES_LNG",
+            "name": "VISIT_REGISTRATION_CORE"
+        }
+    },
+    "event_forms": [
+        "death", "migrationIn", "migrationOut","pregnancyObservation", "pregnancyOutcome"]
+}
