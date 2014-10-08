@@ -1,0 +1,38 @@
+<script src="http://www.openlayers.org/api/OpenLayers.js"></script>
+<script src="http://maps.google.com/maps/api/js?v=3.6&amp;sensor=false"></script>
+<script>
+    var apiKey = "As1jW63G51I3Z3jFZmmsNHsJ8CVxNtkyd7VCtzXk-E0Bztzd80fR0axNXApJW3O5";
+    var map = new OpenLayers.Map({
+        div: "map",
+        controls: [
+            new OpenLayers.Control.Navigation(),
+            new OpenLayers.Control.PanZoomBar(),
+            new OpenLayers.Control.MousePosition({displayProjection:new OpenLayers.Projection("EPSG:4326")})
+        ],
+        projection: new OpenLayers.Projection("EPSG:900913"),
+        displayProjection: new OpenLayers.Projection("EPSG:4326"),
+        units: "m",
+        layers: [new OpenLayers.Layer.Bing({
+                key: apiKey,
+                type: "Aerial"
+            })
+        ]
+    });
+    map.addLayer(new OpenLayers.Layer.Vector("KML", {
+        strategies: [new OpenLayers.Strategy.Fixed()],
+        protocol: new OpenLayers.Protocol.HTTP({
+            url: "{{ url_for('static', filename='tmp/{}'.format(filename)) }}",
+            format: new OpenLayers.Format.KML({
+                extractStyles: true,
+                extractAttributes: true,
+                maxDepth: 7,
+                'internalProjection': map.getProjectionObject(),
+                'externalProjection': new OpenLayers.Projection("EPSG:4326")
+
+            })
+        })
+    }));
+    map.setCenter(new OpenLayers.LonLat(7.597550700000056, 47.5674422).transform(new OpenLayers.Projection("EPSG:4326"),
+            map.getProjectionObject()));
+    map.zoom = 12;
+</script>

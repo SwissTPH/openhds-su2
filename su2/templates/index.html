@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% set active_page = "overview" -%}
+{% block main %}
+<div id="main">
+    <div class="container">
+        <div class="row">
+            <div class="4u">
+                    <table>
+                        {% for item in opsSummary %}
+                        <TR>
+                            <TD class="c1"><h2>{{item.name}}</h2></TD>
+                            <TD class="c2"><h2> {{item.value}}</h2></TD>
+                        </TR>
+                        {% endfor %}
+                    </table>
+		    </div>
+	</div>
+</div>
+<a href="{{ url_for('static', filename='tmp/{}'.format(filename)) }}">Download</a>
+{% endblock %}
+
