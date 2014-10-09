@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% set active_page = "operations" -%}
+{% block main %}
+
+        <a href="operations?disp=visits">Visits</a>
+        <a href="operations?disp=events_by_fw">Events per visit by fieldworker</a>
+         <a href="operations?disp=events_by_type">Events per visit by type</a>
+<div id="main">
+    <div class="container">
+        <div class="row">
+            <div class="8u">
+                <div class="chart1" id="container"></div>
+                <script src="http://code.highcharts.com/highcharts.js"></script>
+                    <script>
+                    $(function () {
+                    var chart_data = {{ chart_data|safe }};
+                    var $cont = $(".chart1");
+                    {% include 'charts/barchart.html' %}
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
