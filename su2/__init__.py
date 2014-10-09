@@ -34,7 +34,6 @@ with open(os.path.join(APP_ROOT, 'conf', app.config['FORM_DEFINITIONS']), 'rb') 
 all_odk_forms = odk_forms['all_forms']
 odk_event_forms = odk_forms['event_forms']
 
-period = 7
 ODKCursor = None
 openHDSCursor = None
 
@@ -102,7 +101,8 @@ def operations():
     elif disp == 'events_by_type':
         chart_data = genRep.get_event_rate_summary_by_event(get_db('ODK_DB').cursor(), all_odk_forms, odk_event_forms)
     else:
-        chart_data = genRep.get_operations_summary(get_db('ODK_DB').cursor(), all_odk_forms, odk_event_forms, period)
+        chart_data = genRep.get_operations_summary(get_db('ODK_DB').cursor(), all_odk_forms,
+                                                   odk_event_forms, app.config['BACK_REPORT_DAYS'])
     return flask.render_template('operations.html', chart_data=json.dumps(chart_data, default=date_time_handler))
 
 
@@ -146,8 +146,8 @@ def issues():
 @requires_auth
 def archive(path=''):
     genRep.generate_reports(get_db('ODK_DB'), all_odk_forms, app.config['OPEN_HDS_DB'], get_db('OPEN_HDS_DB'),
-                            period, int(app.config['MAX_REVISITS']), float(app.config['REVISIT_RADIUS']),
-                            datetime.date.today(), APP_ROOT, app.config['SITE'])
+                            app.config['BACK_REPORT_DAYS'], int(app.config['MAX_REVISITS']),
+                            float(app.config['REVISIT_RADIUS']), datetime.date.today(), APP_ROOT, app.config['SITE'])
     return ai.render_autoindex(path, endpoint='archive', template="archive.html")
 
 
