@@ -21,3 +21,17 @@ gunicorn is installes as a depency, simply:
 ```
 gunicorn -b 0.0.0.0:4000 su2:app
 ```
+####Run with apache's wsgi module
+
+```
+sudo cp etc/su2.conf to /etc/apache2/sites-available/su2.conf
+sudo a2ensite su2.conf
+```
+
+Edit /etc/apache2/apache2.conf, add:
+ServerName localhost
+WSGIApplicationGroup %{GLOBAL}
+
+```
+sudo /etc/init.d apache2 restart
+```
