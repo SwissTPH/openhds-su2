@@ -499,65 +499,6 @@ def get_event_rate_summary_by_fw(cursor, all_odk_forms, odk_event_forms):
     return ebvbf
 
 
-#TODO: this is not yet generic, depends on dates from Rusinga
-def create_demo_rates_reports(open_hds_cursor, today, period, output_dir):
-    #today = datetime.strptime('31122013', "%d%m%Y").date()
-    print(today)
-    w_demo_infrastructure = xlwt.Workbook()
-    row_index = 0
-    demography_sheet = w_demo_infrastructure.add_sheet('Demography')
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Measure", "Value"])
-    baseline_individuals = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM residency WHERE insertDate "
-                                                            "< \'2013-01-01\'")["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Number of individuals at baseline",
-                                                                     baseline_individuals])
-    deaths = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM death")["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Number of deaths", deaths])
-    births = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM pregnancyoutcome")["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Number of births", births])
-    person_years = calculate_person_years(open_hds_cursor)
-    individuals_today = get_individuals_where(open_hds_cursor, "COUNT(*) as count",
-                                              "membership.endDate IS null AND "
-                                              "residency.endDate IS null ", "")[0]["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Number of individuals today", individuals_today])
-    individuals_at_date = get_individuals_where(open_hds_cursor, "COUNT(*) as count",
-                                              "membership.endDate IS null AND "
-                                              "residency.endDate IS null ", "")[0]["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Number of individuals today", individuals_today])
-    cdr = deaths / ((individuals_today + baseline_individuals) / 2.0) * 1000
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Crude death rate avg popsize", cdr])
-    cdr_person_time = deaths / person_years * 1000
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Crude death rate person time", cdr_person_time])
-    cbrpt = births / person_years * 1000
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Crude birth rate person time", cbrpt])
-    by_gender = get_individuals_where(open_hds_cursor, "individual.gender, COUNT(*) AS count ",
-                                       "membership.endDate IS null AND residency.endDate IS null ",
-                                       "GROUP BY individual.gender")
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Females", by_gender[0]["count"]])
-    row_index = write_worksheet_record(demography_sheet, row_index, ["Males", by_gender[1]["count"]])
-    row_index = write_worksheet_record(demography_sheet, row_index,
-                                       ["Sex ratio", float(by_gender[0]["count"]) / by_gender[1]["count"]])
-    external_out_migrations = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM outmigration WHERE "
-                                                               "length(destination)>3")["count"]
-    row_index = write_worksheet_record(demography_sheet, row_index, ["External outmigrations", external_out_migrations])
-    external_in_migrations = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM inmigration "
-                                                              "WHERE length(origin)>3")["count"]
-    write_worksheet_record(demography_sheet, row_index, ["External inmigrations", external_in_migrations])
-    row_index = 0
-    infrastructure_sheet = w_demo_infrastructure.add_sheet('Infrastructure')
-    row_index = write_worksheet_record(infrastructure_sheet, row_index, ["Measure", "Value"])
-    total_houses = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM location WHERE uuid IN "
-                                                    "(SELECT location_uuid FROM residency WHERE "
-                                                    "endDate IS null)")['count']
-    row_index = write_worksheet_record(infrastructure_sheet, row_index, ["Number of houses", total_houses])
-    total_households = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM socialgroup WHERE uuid IN "
-                                                        "(SELECT socialgroup_uuid FROM membership WHERE "
-                                                        "endDate IS null)")["count"]
-    write_worksheet_record(infrastructure_sheet, row_index, ["Number of household", total_households])
-    w_demo_infrastructure.save(os.path.join(output_dir, "DemographyInfrastructureReport" +
-                                                        today.strftime("%Y-%m-%d") + ".xls"))
-
-
 def create_fw_visit_path(odk_cursor, odk_forms, open_hds_db_name, today, period, output_dir):
     all_fws = rL.query_db_all(odk_cursor, "SELECT DISTINCT {fw} FROM {name}".format(**odk_forms["visit"]))
     visit_date = odk_forms["visit"]["date"]
@@ -600,7 +541,6 @@ def create_all_generic_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_
                                radius, output_dir):
     create_operations_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits,
                               radius, output_dir)
-    create_demo_rates_reports(open_hds_cursor, today, period, output_dir)
     create_overview_report(open_hds_cursor, today, output_dir)
     #create_similar_individuals_report(open_hds_cursor, today, output_dir, 0.95, ext_id_inclusion_list=None)
 
