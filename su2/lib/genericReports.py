@@ -393,12 +393,12 @@ def get_multiple_visits(odk_cursor, odk_forms):
 
 
 def get_duplicate_individuals(open_hds_cursor):
-        #Find duplicated individuals by names, parent, dob
-    individual_count = rL.query_db_all(open_hds_cursor, "SELECT COUNT(CONCAT(dob, firstName, lastName, middleName, "
+    #Find duplicated individuals by names, parent, dob
+    individual_count = rL.query_db_all(open_hds_cursor, "SELECT COUNT(CONCAT(dob, firstName, lastName, "
                                                         "father_uuid, mother_uuid)) AS Nb, dob, firstName, "
                                                         "lastName , middleName , father_uuid , mother_uuid FROM "
                                                         "individual GROUP BY CONCAT(dob, firstName, lastName, "
-                                                        "middleName, father_uuid, mother_uuid)")
+                                                        "father_uuid, mother_uuid)")
     duplicate_individuals = [rec for rec in individual_count if rec["Nb"] > 1]
     duplicate_individual_attributes = []
     for ind in duplicate_individuals:
