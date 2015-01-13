@@ -218,7 +218,7 @@ def create_overview_report(open_hds_cursor, today, output_dir):
                                                'INNER JOIN residency residency ON '
                                                '(residency.individual_uuid = individual.uuid)) INNER JOIN '
                                                'location location ON (residency.location_uuid = location.uuid) '
-                                               'WHERE membership.endDate IS NULL AND residency.endDate IS NULL '
+                                               'WHERE membership.endDate IS NULL AND residency.endDate IS NULL and membership.deleted=0 '
                                                'ORDER BY socialgroup.extId, bIsToA')
     rL.create_excel_report_from_container(w_overview.add_sheet('Overview'),
                                           ['extId', 'firstName', 'middleName', 'lastName', 'gender', 'dob',
