@@ -74,7 +74,7 @@ def date_time_handler(obj):
 def index():
     open_hds_cursor = get_db('OPEN_HDS_DB').cursor()
     individuals_today = genRep.get_individuals_where(open_hds_cursor, "COUNT(*) as count",
-                                                     "membership.endDate IS null AND "
+                                                     "membership.endDate IS null AND membership.deleted=0 AND "
                                                      "residency.endDate IS null ", "")[0]["count"]
     total_houses = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM location WHERE uuid IN "
                                                     "(SELECT location_uuid FROM residency "
