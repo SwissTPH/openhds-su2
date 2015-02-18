@@ -78,10 +78,10 @@ def index():
                                                      "residency.endDate IS null ", "")[0]["count"]
     total_houses = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM location WHERE uuid IN "
                                                     "(SELECT location_uuid FROM residency "
-                                                    "WHERE endDate IS null)")["count"]
+                                                    "WHERE endDate IS null and deleted=0)")["count"]
     total_households = rL.query_db_one(open_hds_cursor, "SELECT COUNT(*) AS count FROM socialgroup WHERE uuid IN "
                                                         "(SELECT socialgroup_uuid FROM membership WHERE "
-                                                        "endDate IS null)")["count"]
+                                                        "endDate IS null and deleted=0)")["count"]
     ops_summary = [{"name": "Number of individuals", "value": individuals_today},
                    {"name": "Number of Houses", "value": total_houses},
                    {"name": "Number of households", "value": total_households}]
