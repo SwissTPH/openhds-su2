@@ -524,17 +524,19 @@ def create_revisit_guide(odk_cursor, odk_forms, open_hds_cursor, today, period, 
     location_ids = "','".join(lid[odk_forms["visit"]["location"]] for lid in locations_to_revisit)
     all_locations = rL.query_db_all(open_hds_cursor, "SELECT  extId, latitude, longitude FROM location WHERE extId in "
                                                      "('" + location_ids + "')")
-    data = [all_locations[0]]
-    for loc in all_locations[1:]:
-        if rL.get_distance(data[0]['latitude'], data[0]['longitude'], loc['latitude'], loc['longitude']) < radius:
-            data.append(loc)
-    data = data[0:n_revisits]
-    outfile_path = os.path.join(output_dir, "LocationsToRevisit" + today.strftime("%Y-%m-%d") + ".kml")
-    rL.create_kml_from_container(data, outfile_path, "extId", "extId")
-    w_revisit = xlwt.Workbook()
-    rL.create_excel_report_from_container(w_revisit.add_sheet('Houses to revisit'), ["extId", "latitude", "longitude"],
-                                          data)
-    w_revisit.save(os.path.join(output_dir, "LocationsToRevisit" + today.strftime("%Y-%m-%d") + ".xls"))
+    if len(all_locations) > 0:
+        #only create a revisit file if there are any recently visited locations
+        data = [all_locations[0]]
+        for loc in all_locations[1:]:
+            if rL.get_distance(data[0]['latitude'], data[0]['longitude'], loc['latitude'], loc['longitude']) < radius:
+                data.append(loc)
+        data = data[0:n_revisits]
+        outfile_path = os.path.join(output_dir, "LocationsToRevisit" + today.strftime("%Y-%m-%d") + ".kml")
+        rL.create_kml_from_container(data, outfile_path, "extId", "extId")
+        w_revisit = xlwt.Workbook()
+        rL.create_excel_report_from_container(w_revisit.add_sheet('Houses to revisit'), ["extId", "latitude", "longitude"],
+                                              data)
+        w_revisit.save(os.path.join(output_dir, "LocationsToRevisit" + today.strftime("%Y-%m-%d") + ".xls"))
 
 
 def create_all_generic_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits,
