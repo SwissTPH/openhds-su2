@@ -23,17 +23,18 @@ app.config.from_object('config')
 app.debug = True
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-
 ai = AutoIndex(app, os.path.join(APP_ROOT, 'static/archive'), add_url_rules=False)
 
 all_odk_forms = None
 odk_event_forms = None
 with open(os.path.join(APP_ROOT, 'conf', app.config['FORM_DEFINITIONS']), 'rb') as fp:
-    odk_forms = json.load(fp)
+    site_config = json.load(fp)
 
-all_odk_forms = odk_forms['all_forms']
-odk_event_forms = odk_forms['event_forms']
-
+all_odk_forms = site_config['all_forms']
+odk_event_forms = site_config['event_forms']
+geo_boundaries = site_config['geo_boundaries']
+geo_center = {'lon': (float(geo_boundaries['east']) + float(geo_boundaries['west'])) / 2,
+              'lat': (float(geo_boundaries['north']) + float(geo_boundaries['south'])) / 2}
 ODKCursor = None
 openHDSCursor = None
 
@@ -102,7 +103,7 @@ def operations():
         chart_data = genRep.get_event_rate_summary_by_event(get_db('ODK_DB').cursor(), all_odk_forms, odk_event_forms)
     else:
         chart_data = genRep.get_operations_summary(get_db('ODK_DB').cursor(), all_odk_forms,
-                                                   odk_event_forms, app.config['BACK_REPORT_DAYS'])
+                                                   app.config['BACK_REPORT_DAYS'])
     return flask.render_template('operations.html', chart_data=json.dumps(chart_data, default=date_time_handler))
 
 
@@ -138,7 +139,7 @@ def issues():
         rL.create_kml_from_container(data, kml_file, "extId", "extId")
     else:
         rL.create_empty_kml(kml_file)
-    return flask.render_template('issues.html', filename=filename)
+    return flask.render_template('issues.html', filename=filename, geo_lat=geo_center['lat'], geo_lon=geo_center['lon'])
 
 
 @app.route('/archive')

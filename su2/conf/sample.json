@@ -7,6 +7,12 @@
             "location": "LEFT(DEATH_REGISTRATION_CORE.VISIT_ID,9)",
             "name": "DEATH_REGISTRATION_CORE"
         },
+        "locationRegistration": {
+            "date": "DATE(END)",
+            "fw": "FIELD_WORKER_ID",
+            "location": "LOCATION_ID",
+            "name": "LOCATION_REGISTRATION_CORE"
+        },
         "migrationIn": {
             "date": "DATE(END)",
             "fw": "FIELD_WORKER_ID",
@@ -22,7 +28,8 @@
             "location": "LEFT(OUT_MIGRATION_REGISTRATION_CORE.VISIT_ID,9)",
             "name": "OUT_MIGRATION_REGISTRATION_CORE",
             "reason": "REASON_FOR_OUT_MIGRATION",
-            "is_internal": "WITHIN_RUSINGA"
+            "is_internal_field": "NAME_OF_DESTINATION",
+          "is_internal_values": "YES"
         },
         "pregnancyObservation": {
             "date": "DATE(END)",
@@ -48,5 +55,11 @@
         }
     },
     "event_forms": [
-        "death", "migrationIn", "migrationOut","pregnancyObservation", "pregnancyOutcome"]
+        "death", "migrationIn", "migrationOut","pregnancyObservation", "pregnancyOutcome"],
+  "geo_boundaries": {
+    "north": "-8.0",
+    "east": "36.71",
+    "south": "-8.33",
+    "west": "36.62"
+  }
 }

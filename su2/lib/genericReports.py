@@ -56,8 +56,9 @@ def get_missing_in_migrations(odk_cursor, odk_forms):
     missing_in_migrations = rL.query_db_all(odk_cursor, 'SELECT {migrationOut[fw]}, '
                                                         '{migrationOut[individual]}, '
                                                         '{migrationOut[location]}, {migrationOut[reason]}, '
-                                                        '{migrationOut[is_internal]} FROM {migrationOut[name]} '
-                                                        'WHERE {migrationOut[is_internal]}=\'YES\' AND '
+                                                        '{migrationOut[is_internal_field]} FROM {migrationOut[name]} '
+                                                        'WHERE {migrationOut[is_internal_field]}='
+                                                        '\'{migrationOut[is_internal_values]}\' AND '
                                                         '{migrationOut[name]}.{migrationOut[individual]} NOT IN '
                                                         '(SELECT {migrationIn[name]}.{migrationIn[individual]} '
                                                         'FROM {migrationIn[name]} WHERE {migrationIn[migration_type]}='
@@ -66,126 +67,42 @@ def get_missing_in_migrations(odk_cursor, odk_forms):
     return missing_in_migrations
 
 
-def get_nr_events_reported(odk_cursor, odk_forms):
-    no_events_reported = rL.query_db_all(odk_cursor,
-                                         'SELECT  "No Events" Event_Reported, {reVisit[name]}.{reVisit[location]}, '
-                                         '{death[name]}.{death[individual]} DEATH, '
-                                         '{migrationIn[name]}.{migrationIn[individual]} MIGRATIONIN, '
-                                         '{migrationOut[name]}.{migrationOut[individual]} MIGRATIONOUT, '
-                                         '{pregnancyOutcome[name]}.{pregnancyOutcome[individual]} PRGNOUTCOME, '
-                                         '{pregnancyObservation[name]}.{pregnancyObservation[individual]} '
-                                         'PREGOBSERVATION FROM ((((({reVisitEvents[name]} {reVisitEvents[name]} '
-                                         'INNER JOIN {reVisit[name]} {reVisit[name]} '
-                                         'ON ({reVisitEvents[name]}._TOP_LEVEL_AURI = '
-                                         '{reVisit[name]}._URI)) LEFT OUTER JOIN {death[name]} {death[name]} '
-                                         'ON ({death[location]} = '
-                                         '{reVisit[name]}.{reVisit[location]})) LEFT OUTER JOIN '
-                                         '{migrationIn[name]} {migrationIn[name]} '
-                                         'ON ({migrationIn[location]} = '
-                                         '{reVisit[name]}.{reVisit[location]})) LEFT OUTER JOIN '
-                                         '{migrationOut[name]} {migrationOut[name]} '
-                                         'ON ({migrationOut[location]} = '
-                                         '{reVisit[name]}.{reVisit[location]})) LEFT OUTER JOIN '
-                                         '{pregnancyObservation[name]} {pregnancyObservation[name]} '
-                                         'ON ({pregnancyObservation[location]} = '
-                                         '{reVisit[name]}.{reVisit[location]})) LEFT OUTER JOIN '
-                                         '{pregnancyOutcome[name]} {pregnancyOutcome[name]} ON '
-                                         '({pregnancyOutcome[location]} = '
-                                         '{reVisit[name]}.{reVisit[location]}) WHERE '
-                                         '{reVisitEvents[name]}.{reVisitEvents[fw]}=99 '
-                                         'ORDER BY 1 DESC'.format(**odk_forms))
-    return no_events_reported
+def get_houses_with_events(odk_cursor, odk_event_forms, odk_all_forms):
+    location_ids = set()
+    for e_form in odk_event_forms:
+        form = odk_all_forms[e_form]
+        loc_ids = rL.query_db_all(odk_cursor, "SELECT DISTINCT {location} AS 'location' FROM {name}".format(**form))
+        loc_ids = set([r["location"] for r in loc_ids])
+        location_ids = location_ids.union(loc_ids)
+    return location_ids
 
 
-def get_events_reported(odk_cursor, odk_forms):
-    events_reported = rL.query_db_all(odk_cursor,
-                                      'SELECT "DEATH" EVENT_REPORTED, '
-                                      '{reVisit[name]}.{reVisit[location]}, '
-                                      '{death[name]}.{death[individual]} FROM ({reVisitEvents[name]} '
-                                      '{reVisitEvents[name]} INNER JOIN {reVisit[name]} '
-                                      '{reVisit[name]} ON ({reVisitEvents[name]}._TOP_LEVEL_AURI = '
-                                      '{reVisit[name]}._URI)) LEFT OUTER JOIN '
-                                      '{death[name]} {death[name]} ON ({death[location]} = '
-                                      '{reVisit[name]}.{reVisit[location]}) '
-                                      'WHERE  {reVisitEvents[name]}.{reVisitEvents[fw]}=5 UNION SELECT '
-                                      '\'OUT MIGRATION\', {reVisit[name]}.{reVisit[location]}, '
-                                      '{migrationOut[name]}.{migrationOut[individual]} '
-                                      'FROM ({reVisitEvents[name]} {reVisitEvents[name]} '
-                                      'INNER JOIN {reVisit[name]} {reVisit[name]} ON '
-                                      '({reVisitEvents[name]}._TOP_LEVEL_AURI='
-                                      '{reVisit[name]}._URI)) LEFT OUTER JOIN '
-                                      '{migrationOut[name]} {migrationOut[name]} ON '
-                                      '({migrationOut[location]} = {reVisit[name]}.{reVisit[location]}) WHERE '
-                                      '{reVisitEvents[name]}.{reVisitEvents[fw]}=1 '
-                                      'UNION SELECT \'IN MIGRATION\', {reVisit[name]}.{reVisit[location]}, '
-                                      '{migrationIn[name]}.{migrationIn[individual]} '
-                                      'FROM ({reVisitEvents[name]} {reVisitEvents[name]} '
-                                      'INNER JOIN {reVisit[name]} {reVisit[name]} ON '
-                                      '({reVisitEvents[name]}._TOP_LEVEL_AURI ={reVisit[name]}._URI)) LEFT OUTER JOIN '
-                                      '{migrationIn[name]} {migrationIn[name]} '
-                                      'ON ({migrationIn[location]} = {reVisit[name]}.{reVisit[location]}) WHERE '
-                                      '{reVisitEvents[name]}.{reVisitEvents[fw]}=2 UNION SELECT '
-                                      '\'PREGNANCY OUTCOME\', {reVisit[name]}.{reVisit[location]}, '
-                                      '{pregnancyOutcome[name]}.{pregnancyOutcome[individual]} FROM '
-                                      '({reVisitEvents[name]} {reVisitEvents[name]} '
-                                      'INNER JOIN {reVisit[name]} {reVisit[name]} ON '
-                                      '({reVisitEvents[name]}._TOP_LEVEL_AURI ='
-                                      ' {reVisit[name]}._URI)) LEFT OUTER JOIN '
-                                      '{pregnancyOutcome[name]} {pregnancyOutcome[name]} ON '
-                                      '({pregnancyOutcome[location]} = {reVisit[name]}.{reVisit[location]}) WHERE '
-                                      '{reVisitEvents[name]}.{reVisitEvents[fw]}=4 UNION '
-                                      'SELECT \'PREGNANCY OBSERVATION\', {reVisit[name]}.{reVisit[location]}, '
-                                      '{pregnancyObservation[name]}.{pregnancyObservation[individual]} '
-                                      'FROM ({reVisitEvents[name]} {reVisitEvents[name]} '
-                                      'INNER JOIN {reVisit[name]} {reVisit[name]} ON '
-                                      '({reVisitEvents[name]}._TOP_LEVEL_AURI = {reVisit[name]}._URI)) LEFT OUTER JOIN '
-                                      '{pregnancyObservation[name]} {pregnancyObservation[name]} ON '
-                                      '({pregnancyObservation[location]} = {reVisit[name]}.{reVisit[location]}) WHERE '
-                                      '{reVisitEvents[name]}.{reVisitEvents[fw]}=3 '
-                                      'ORDER BY 1 DESC'.format(**odk_forms))
-    return events_reported
-
-
-def create_problem_report(odk_cursor, odk_forms, open_hds_cursor, today, output_dir):
-    visit_form = odk_forms['visit']
+def create_problem_report(odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir):
+    visit_form = all_odk_forms['visit']
     w_problems = xlwt.Workbook()
-    houses_without_visit_form = houses_without_visit_forms(odk_cursor, odk_forms, open_hds_cursor)
+    houses_without_visit_form = houses_without_visit_forms(odk_cursor, all_odk_forms, open_hds_cursor)
     rL.create_excel_report_from_container(w_problems.add_sheet("Houses without visit form"),
                                           ["House ID", "latitude", "longitude", "Date(s)", "FW(s)", "Event type(s)"],
                                           houses_without_visit_form)
-    try:
-        nr_events_reported = get_nr_events_reported(odk_cursor, odk_forms)
-        rL.create_excel_report_from_container(w_problems.add_sheet("No events reported"),
-                                              ["Event_Reported", "HOUSE_ID", "DEATH", "MIGRATIONIN", "MIGRATIONOUT",
-                                               "PRGNOUTCOME", "PREGOBSERVATION"], nr_events_reported)
-    except Exception as detail:
-        print ("nr_events_reported failed: " + str(detail))
-
-    try:
-        events_reported = get_events_reported(odk_cursor, odk_forms)
-        rL.create_excel_report_from_container(w_problems.add_sheet("Events reported"),
-                                              ["EVENT_REPORTED", "HOUSE_ID", "PERMANENT_ID"], events_reported)
-    except Exception as detail:
-        print ("events_reported failed: " + str(detail))
-
-    multi_out_migrations = get_multiple_out_migrations(odk_cursor, odk_forms)
+    multi_out_migrations = get_multiple_out_migrations(odk_cursor, all_odk_forms)
     rL.create_excel_report_from_container(w_problems.add_sheet("Duplicate outmigrations"),
-                                          ["Nb", odk_forms["migrationOut"]["individual"]], multi_out_migrations)
-    multiple_in_migrations = get_multiple_in_migrations(odk_cursor, odk_forms)
+                                          ["Nb", all_odk_forms["migrationOut"]["individual"]], multi_out_migrations)
+    multiple_in_migrations = get_multiple_in_migrations(odk_cursor, all_odk_forms)
     rL.create_excel_report_from_container(w_problems.add_sheet("Duplicate inmigrations"),
-                                          ["Nb", odk_forms["migrationIn"]["individual"]], multiple_in_migrations)
+                                          ["Nb", all_odk_forms["migrationIn"]["individual"]], multiple_in_migrations)
 
     try:
-        missing_in_migrations = get_missing_in_migrations(odk_cursor, odk_forms)
+        missing_in_migrations = get_missing_in_migrations(odk_cursor, all_odk_forms)
         rL.create_excel_report_from_container(w_problems.add_sheet("Missing internal migrations"),
-                                              [odk_forms["migrationOut"]["fw"], odk_forms["migrationOut"]["individual"],
-                                               odk_forms["migrationOut"]["location"],
-                                               odk_forms["migrationOut"]["reason"],
-                                               odk_forms["migrationOut"]["is_internal"]], missing_in_migrations)
+                                              [all_odk_forms["migrationOut"]["fw"],
+                                               all_odk_forms["migrationOut"]["individual"],
+                                               all_odk_forms["migrationOut"]["location"],
+                                               all_odk_forms["migrationOut"]["reason"],
+                                               all_odk_forms["migrationOut"]["is_internal"]], missing_in_migrations)
     except Exception as detail:
         print ("missing_in_migrations failed: " + str(detail))
 
-    multiple_visits = get_multiple_visits(odk_cursor, odk_forms)
+    multiple_visits = get_multiple_visits(odk_cursor, all_odk_forms)
     rL.create_excel_report_from_container(w_problems.add_sheet("Duplicate visits"), ["Nb", visit_form["location"]],
                                           multiple_visits)
     duplicate_individuals = get_duplicate_individuals(open_hds_cursor)
@@ -327,14 +244,15 @@ def houses_without_residency(open_hds_cursor):
 def get_all_visits(odk_cursor, odk_forms, open_hds_cursor):
     visit_form = odk_forms['visit']
     houses_visited = {}
-    visits = rL.query_db_all(odk_cursor, "SELECT DISTINCT {location}, {fw}, {date} FROM {name}".format(**visit_form))
+    visits = rL.query_db_all(odk_cursor, "SELECT DISTINCT {location} AS location, {fw}, {date} FROM {name}"
+                             .format(**visit_form))
     for visit in visits:
-        location = visit[visit_form['location']]
+        location = visit['location']
         if not location in houses_visited:
             houses_visited[location] = {'visits': [], 'latitude': 0, 'longitude': 0}
         houses_visited[location]['visits'].append(visit)
-    for form in odk_forms.values():
-        if not 'location' in form.keys():
+    for name, form in odk_forms.iteritems():
+        if not 'location' in form.keys() or 'name' == 'visit':
             continue
         form_records = rL.query_db_all(odk_cursor, "SELECT {location}, {fw}, {date} FROM {name}".format(**form))
         for record in form_records:
@@ -360,13 +278,12 @@ def houses_without_visit_forms(odk_cursor, odk_forms, open_hds_cursor):
     no_visit_form = []
     for location in visits.keys():
         if not 'visits' in visits[location].keys():
-            if not odk_forms['houseInfo']['name'] in [v[1] for v in visits[location]['events']]:
-                fws = set([v[2] for v in visits[location]['events']])
-                dates = set([v[0].strftime("%Y-%m-%d") for v in visits[location]['events']])
-                event_types = set([v[1] for v in visits[location]['events']])
-                latitude = visits[location]['latitude']
-                longitude = visits[location]['longitude']
-                no_visit_form.append({'House ID': location, 'latitude': latitude, 'longitude': longitude,
+            fws = set([v[2] for v in visits[location]['events']])
+            dates = set([v[0].strftime("%Y-%m-%d") for v in visits[location]['events']])
+            event_types = set([v[1] for v in visits[location]['events']])
+            latitude = visits[location]['latitude']
+            longitude = visits[location]['longitude']
+            no_visit_form.append({'House ID': location, 'latitude': latitude, 'longitude': longitude,
                                       'Date(s)': " | ".join(dates), 'FW(s)': " | ".join(fws),
                                       'Event type(s)': " | ".join(event_types)})
     return no_visit_form
@@ -418,7 +335,7 @@ def get_duplicate_individuals(open_hds_cursor):
     return duplicate_individual_attributes
 
 
-def get_operations_summary(cursor, all_odk_forms, odk_event_forms, period):
+def get_operations_summary(cursor, all_odk_forms, period):
     visit_form = all_odk_forms["visit"]
     visit_counts = rL.query_db_all(cursor, "SELECT {fw}, COUNT(*) AS HousesVisitedPerDay, {date} FROM {name} "
                                            "WHERE ADDDATE({date}, INTERVAL {period} DAY)>=CURDATE() GROUP BY {fw}, "

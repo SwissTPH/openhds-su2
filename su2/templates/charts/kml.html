@@ -32,7 +32,9 @@
             })
         })
     }));
-    map.setCenter(new OpenLayers.LonLat(7.597550700000056, 47.5674422).transform(new OpenLayers.Projection("EPSG:4326"),
+    var geoLat = {{ geo_lat|safe }};
+    var geoLon = {{ geo_lon|safe }};
+    map.setCenter(new OpenLayers.LonLat(geoLon, geoLat).transform(new OpenLayers.Projection("EPSG:4326"),
             map.getProjectionObject()));
-    map.zoom = 12;
+    map.zoom = 11;
 </script>
