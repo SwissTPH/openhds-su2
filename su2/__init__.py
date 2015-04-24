@@ -120,7 +120,8 @@ def issues():
     odk_cursor = get_db('ODK_DB').cursor()
     open_hds_cursor = get_db('OPEN_HDS_DB').cursor()
     if disp == "houses_without_visit_forms":
-        data = genRep.houses_without_visit_forms(odk_cursor, all_odk_forms, open_hds_cursor)
+        visits = genRep.get_all_visits(odk_cursor, all_odk_forms, open_hds_cursor)
+        data = genRep.houses_without_visit_forms(visits)
         rL.create_kml_from_container(data, kml_file, "House ID", "House ID")
     elif disp == "duplicate_outmigrations":
         data = genRep.get_multiple_out_migrations(odk_cursor, all_odk_forms)

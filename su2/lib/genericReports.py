@@ -14,34 +14,93 @@ import xlwt
 import reportLib as rL
 
 
-def create_summary_excel_report(odk_cursor, odk_forms, today, period, output_dir):
+def get_all_visits(odk_cursor, odk_forms, open_hds_cursor):
+    visit_form = odk_forms['visit']
+    houses_visited = {}
+    visits = rL.query_db_all(odk_cursor, "SELECT DISTINCT {location} AS location, {fw}, {date} FROM {name}"
+                             .format(**visit_form))
+    for visit in visits:
+        location = visit['location']
+        if not location in houses_visited:
+            houses_visited[location] = {'visits': [], 'latitude': 0, 'longitude': 0}
+        houses_visited[location]['visits'].append(visit)
+    for name, form in odk_forms.iteritems():
+        if not 'location' in form.keys() or 'name' == 'visit':
+            continue
+        form_records = rL.query_db_all(odk_cursor, "SELECT {location}, {fw}, {date} FROM {name}".format(**form))
+        for record in form_records:
+            event_type = form['name']
+            location = record[form['location']]
+            if not location in houses_visited:
+                houses_visited[location] = {'events': [], 'latitude': 0, 'longitude': 0}
+            else:
+                if not 'events' in houses_visited[location]:
+                    houses_visited[location]['events'] = []
+            houses_visited[location]['events'].append([record[form['date']], event_type, record[form['fw']]])
+    all_locations = '","'.join(houses_visited.keys())
+    visited_coordinates = rL.query_db_all(open_hds_cursor, 'SELECT extId, latitude, longitude FROM location WHERE '
+                                                           'extId IN ("{locations}")'.format(locations=all_locations))
+    for coordinates in visited_coordinates:
+        houses_visited[coordinates['extId']]['latitude'] = coordinates['latitude']
+        houses_visited[coordinates['extId']]['longitude'] = coordinates['longitude']
+    return houses_visited
+
+
+def get_active_individuals(open_hds_cursor):
+    return rL.query_db_all(open_hds_cursor, 'SELECT individual.extId, individual.firstName, individual.middleName, '
+                                               'individual.lastName, individual.gender, individual.dob, '
+                                               'socialgroup.extId socialgroup, location.extId location, '
+                                               'location.latitude, location.longitude, location.altitude, '
+                                               'location.accuracy, membership.bIsToA FROM '
+                                               '(((membership membership INNER JOIN individual '
+                                               'individual ON (membership.individual_uuid = individual.uuid)) '
+                                               'INNER JOIN socialgroup socialgroup ON '
+                                               '(membership.socialGroup_uuid = socialgroup.uuid)) '
+                                               'INNER JOIN residency residency ON '
+                                               '(residency.individual_uuid = individual.uuid)) INNER JOIN '
+                                               'location location ON (residency.location_uuid = location.uuid) '
+                                               'WHERE membership.endDate IS NULL AND residency.endDate IS NULL AND '
+                                               'membership.deleted=0 '
+                                               'ORDER BY socialgroup.extId, bIsToA')
+
+def create_summary_excel_report(visits, odk_cursor, open_hds_cursor, odk_forms, today, period, output_dir):
     w_houses_visited = xlwt.Workbook()
     visit_form = odk_forms['visit']
-    #Houses visited in the last week:
-    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses_visited'),
+    #Active houses not yet visited in this round:
+    active_individuals = get_active_individuals(open_hds_cursor)
+    unvisited_individuals = []
+    for ind in active_individuals:
+        if ind['location'] not in visits.keys():
+            unvisited_individuals.append(ind)
+    rL.create_excel_report_from_container(w_houses_visited.add_sheet('Not yet visited individuals'),
+                                          ['extId', 'firstName', 'middleName', 'lastName', 'gender', 'dob',
+                                           'socialgroup', 'location', 'latitude', 'longitude', 'altitude',
+                                           'accuracy', 'bIsToA'], unvisited_individuals)
+    #Houses visited in the reporting period (e.g.last week):
+    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses visited in report period'),
                                       "SELECT {fw}, {location} FROM {name} WHERE ADDDATE({date}, INTERVAL {period} DAY)"
                                       ">=CURDATE() ORDER BY {fw}, {location} ASC".format(period=period, **visit_form),
                                       [visit_form["fw"], visit_form["location"]])
-    #Number of Houses visited in the last week per fw:
-    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses_visited_by_FW'),
+    #Number of Houses visited in the reporting period (e.g.last week) per fw:
+    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses visited_by_FW in rep per'),
                                       "SELECT {fw}, COUNT(*) AS HousesVisited FROM {name} WHERE ADDDATE({date}, "
                                       "INTERVAL {period} DAY)>=CURDATE() GROUP BY {fw} ORDER BY HousesVisited "
                                       "ASC".format(period=period, **visit_form),
                                       [visit_form["fw"], "HousesVisited"])
-    #Number of Houses visited in the last week per Day:
-    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses_visited_per_Day'),
+    #Number of Houses visited in the reporting period (e.g.last week) per Day:
+    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses visited per day in per'),
                                       "SELECT COUNT(*) AS HousesVisitedPerDay, {date} FROM {name} WHERE ADDDATE({date},"
                                       " INTERVAL {period} DAY)>=CURDATE() GROUP BY {date} ORDER BY {date} "
                                       "ASC".format(period=period, **visit_form),
                                       [visit_form["date"], "HousesVisitedPerDay"])
-    #Number of Houses visited in the last week per fw, per Day:
-    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses_visited_by_FW_per_Day'),
+    #Number of Houses visited in the reporting period (e.g.last week) per fw, per Day:
+    rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses visited by FW per day'),
                                       "SELECT {fw}, COUNT(*) AS HousesVisitedPerDay, {date} FROM {name} WHERE "
                                       "ADDDATE({date}, INTERVAL {period} DAY)>=CURDATE() GROUP BY {fw}, {date} "
                                       "ORDER BY {fw}, {date} ASC".format(period=period, **visit_form),
                                       [visit_form["date"], visit_form["fw"], "HousesVisitedPerDay"])
 
-    #Number of Forms filled in the last week per fw, per Day:
+    #Number of Forms filled in the reporting period (e.g.last week) per fw, per Day:
     for key, form in odk_forms.iteritems():
         if key == "visit" or key == "reVisit" or key == "reVisitEvents":
             continue
@@ -77,10 +136,10 @@ def get_houses_with_events(odk_cursor, odk_event_forms, odk_all_forms):
     return location_ids
 
 
-def create_problem_report(odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir):
+def create_problem_report(visits, odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir):
     visit_form = all_odk_forms['visit']
     w_problems = xlwt.Workbook()
-    houses_without_visit_form = houses_without_visit_forms(odk_cursor, all_odk_forms, open_hds_cursor)
+    houses_without_visit_form = houses_without_visit_forms(visits)
     rL.create_excel_report_from_container(w_problems.add_sheet("Houses without visit form"),
                                           ["House ID", "latitude", "longitude", "Date(s)", "FW(s)", "Event type(s)"],
                                           houses_without_visit_form)
@@ -103,7 +162,7 @@ def create_problem_report(odk_cursor, all_odk_forms, open_hds_cursor, today, out
         print ("missing_in_migrations failed: " + str(detail))
 
     multiple_visits = get_multiple_visits(odk_cursor, all_odk_forms)
-    rL.create_excel_report_from_container(w_problems.add_sheet("Duplicate visits"), ["Nb", visit_form["location"]],
+    rL.create_excel_report_from_container(w_problems.add_sheet("Multiple visits"), ["Nb", visit_form["location"]],
                                           multiple_visits)
     duplicate_individuals = get_duplicate_individuals(open_hds_cursor)
     rL.create_excel_report_from_container(w_problems.add_sheet("Duplicate individuals"),
@@ -123,20 +182,7 @@ def create_problem_report(odk_cursor, all_odk_forms, open_hds_cursor, today, out
 
 def create_overview_report(open_hds_cursor, today, output_dir):
     w_overview = xlwt.Workbook()
-    records = rL.query_db_all(open_hds_cursor, 'SELECT individual.extId, individual.firstName, individual.middleName, '
-                                               'individual.lastName, individual.gender, individual.dob, '
-                                               'socialgroup.extId socialgroup, location.extId location, '
-                                               'location.latitude, location.longitude, location.altitude, '
-                                               'location.accuracy, membership.bIsToA FROM '
-                                               '(((membership membership INNER JOIN individual '
-                                               'individual ON (membership.individual_uuid = individual.uuid)) '
-                                               'INNER JOIN socialgroup socialgroup ON '
-                                               '(membership.socialGroup_uuid = socialgroup.uuid)) '
-                                               'INNER JOIN residency residency ON '
-                                               '(residency.individual_uuid = individual.uuid)) INNER JOIN '
-                                               'location location ON (residency.location_uuid = location.uuid) '
-                                               'WHERE membership.endDate IS NULL AND residency.endDate IS NULL and membership.deleted=0 '
-                                               'ORDER BY socialgroup.extId, bIsToA')
+    records = get_active_individuals(open_hds_cursor)
     rL.create_excel_report_from_container(w_overview.add_sheet('Overview'),
                                           ['extId', 'firstName', 'middleName', 'lastName', 'gender', 'dob',
                                            'socialgroup', 'location', 'latitude', 'longitude', 'altitude',
@@ -241,40 +287,7 @@ def houses_without_residency(open_hds_cursor):
                                             '(SELECT location_uuid FROM residency WHERE endDate IS NULL)')
 
 
-def get_all_visits(odk_cursor, odk_forms, open_hds_cursor):
-    visit_form = odk_forms['visit']
-    houses_visited = {}
-    visits = rL.query_db_all(odk_cursor, "SELECT DISTINCT {location} AS location, {fw}, {date} FROM {name}"
-                             .format(**visit_form))
-    for visit in visits:
-        location = visit['location']
-        if not location in houses_visited:
-            houses_visited[location] = {'visits': [], 'latitude': 0, 'longitude': 0}
-        houses_visited[location]['visits'].append(visit)
-    for name, form in odk_forms.iteritems():
-        if not 'location' in form.keys() or 'name' == 'visit':
-            continue
-        form_records = rL.query_db_all(odk_cursor, "SELECT {location}, {fw}, {date} FROM {name}".format(**form))
-        for record in form_records:
-            event_type = form['name']
-            location = record[form['location']]
-            if not location in houses_visited:
-                houses_visited[location] = {'events': [], 'latitude': 0, 'longitude': 0}
-            else:
-                if not 'events' in houses_visited[location]:
-                    houses_visited[location]['events'] = []
-            houses_visited[location]['events'].append([record[form['date']], event_type, record[form['fw']]])
-    all_locations = '","'.join(houses_visited.keys())
-    visited_coordinates = rL.query_db_all(open_hds_cursor, 'SELECT extId, latitude, longitude FROM location WHERE '
-                                                           'extId IN ("{locations}")'.format(locations=all_locations))
-    for coordinates in visited_coordinates:
-        houses_visited[coordinates['extId']]['latitude'] = coordinates['latitude']
-        houses_visited[coordinates['extId']]['longitude'] = coordinates['longitude']
-    return houses_visited
-
-
-def houses_without_visit_forms(odk_cursor, odk_forms, open_hds_cursor):
-    visits = get_all_visits(odk_cursor, odk_forms, open_hds_cursor)
+def houses_without_visit_forms(visits):
     no_visit_form = []
     for location in visits.keys():
         if not 'visits' in visits[location].keys():
@@ -468,8 +481,9 @@ def create_operations_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_h
                               radius, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    create_summary_excel_report(odk_cursor, all_odk_forms, today, period, output_dir)
-    create_problem_report(odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir)
+    visits = get_all_visits(odk_cursor, all_odk_forms, open_hds_cursor)
+    create_summary_excel_report(visits, odk_cursor, open_hds_cursor, all_odk_forms, today, period, output_dir)
+    create_problem_report(visits, odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir)
     visit_path_dir = os.path.join(output_dir, "recentlyVisited")
     if not os.path.exists(visit_path_dir):
         os.makedirs(visit_path_dir)
