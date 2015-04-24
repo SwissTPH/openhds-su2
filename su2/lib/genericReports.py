@@ -47,35 +47,48 @@ def get_all_visits(odk_cursor, odk_forms, open_hds_cursor):
 
 
 def get_active_individuals(open_hds_cursor):
-    return rL.query_db_all(open_hds_cursor, 'SELECT individual.extId, individual.firstName, individual.middleName, '
-                                               'individual.lastName, individual.gender, individual.dob, '
-                                               'socialgroup.extId socialgroup, location.extId location, '
-                                               'location.latitude, location.longitude, location.altitude, '
-                                               'location.accuracy, membership.bIsToA FROM '
-                                               '(((membership membership INNER JOIN individual '
-                                               'individual ON (membership.individual_uuid = individual.uuid)) '
-                                               'INNER JOIN socialgroup socialgroup ON '
-                                               '(membership.socialGroup_uuid = socialgroup.uuid)) '
-                                               'INNER JOIN residency residency ON '
-                                               '(residency.individual_uuid = individual.uuid)) INNER JOIN '
-                                               'location location ON (residency.location_uuid = location.uuid) '
-                                               'WHERE membership.endDate IS NULL AND residency.endDate IS NULL AND '
-                                               'membership.deleted=0 '
-                                               'ORDER BY socialgroup.extId, bIsToA')
+    return rL.query_db_all(open_hds_cursor, 'select i.extId ID, i.firstName, i.middleName, i.lastName, i.gender, '
+                                            'i.dob,f.extId father, m.extId mother, r.startType, r.startDate, '
+                                            'l.extId location, l.locationName FamilyName, h.extId Subvillage, '
+                                            'h.name SubVillageName, h1.extId VillageCode, h1.name VillageName, '
+                                            's.extId SocialGroup, sg.extId Head, sg.dob Head_dob, me.bIsToA relToHead,'
+                                            'l.latitude, l.longitude FROM individual i, '
+                                            'individual f, individual m, residency r, location l, locationhierarchy h, '
+                                            'locationhierarchy h1, socialgroup s, membership me, individual sg '
+                                            'where i.father_uuid = f.uuid and i.mother_uuid = m.uuid '
+                                            'and i.uuid=r.individual_uuid and  i.uuid = me.individual_uuid '
+                                            'and r.location_uuid=l.uuid and l.locationLevel_uuid=h.uuid '
+                                            'and h.parent_uuid = h1.uuid and me.socialGroup_uuid = s.uuid '
+                                            'and sg.uuid = s.groupHead_uuid and r.endDate is null and me.endDate '
+                                            'is null and i.deleted=0 order by 11;')
 
-def create_summary_excel_report(visits, odk_cursor, open_hds_cursor, odk_forms, today, period, output_dir):
+
+def create_summary_reports(visits, odk_cursor, open_hds_cursor, odk_forms, today, period, output_dir):
+    w_overview = xlwt.Workbook()
+    active_individuals = get_active_individuals(open_hds_cursor)
+    rL.create_excel_report_from_container(w_overview.add_sheet('Overview'),
+                                          ['ID', 'firstName', 'middleName', 'lastName', 'gender', 'dob', 'father',
+                                           'mother', 'startType', 'startDate', 'location', 'FamilyName', 'Subvillage',
+                                           'SubVillageName', 'VillageCode', 'VillageName', 'SocialGroup',
+                                           'Head', 'Head_dob', 'relToHead', 'latitude', 'longitude'],
+                                          active_individuals)
+    w_overview.save(os.path.join(output_dir, "Overview" + today.strftime("%Y-%m-%d") + ".xls"))
     w_houses_visited = xlwt.Workbook()
     visit_form = odk_forms['visit']
     #Active houses not yet visited in this round:
-    active_individuals = get_active_individuals(open_hds_cursor)
     unvisited_individuals = []
     for ind in active_individuals:
         if ind['location'] not in visits.keys():
             unvisited_individuals.append(ind)
     rL.create_excel_report_from_container(w_houses_visited.add_sheet('Not yet visited individuals'),
-                                          ['extId', 'firstName', 'middleName', 'lastName', 'gender', 'dob',
-                                           'socialgroup', 'location', 'latitude', 'longitude', 'altitude',
-                                           'accuracy', 'bIsToA'], unvisited_individuals)
+                                          ['ID', 'firstName', 'middleName', 'lastName', 'gender', 'dob', 'father',
+                                           'mother', 'startType', 'startDate', 'location', 'FamilyName', 'Subvillage',
+                                           'SubVillageName', 'VillageCode', 'VillageName', 'SocialGroup',
+                                           'Head', 'Head_dob', 'relToHead', 'latitude', 'longitude'],
+                                          unvisited_individuals)
+    rL.create_kml_from_container(unvisited_individuals,
+                                 os.path.join(output_dir, "StillToVisit" + today.strftime("%Y-%m-%d") + ".kml"),
+                                 'VillageName', 'ID')
     #Houses visited in the reporting period (e.g.last week):
     rL.create_excel_report_from_query(odk_cursor, w_houses_visited.add_sheet('Houses visited in report period'),
                                       "SELECT {fw}, {location} FROM {name} WHERE ADDDATE({date}, INTERVAL {period} DAY)"
@@ -178,16 +191,6 @@ def create_problem_report(visits, odk_cursor, all_odk_forms, open_hds_cursor, to
                                                                          today.strftime("%Y-%m-%d") +
                                                                          ".kml"), "extId", "extId")
     w_problems.save(os.path.join(output_dir, "ProblemReport" + today.strftime("%Y-%m-%d") + ".xls"))
-
-
-def create_overview_report(open_hds_cursor, today, output_dir):
-    w_overview = xlwt.Workbook()
-    records = get_active_individuals(open_hds_cursor)
-    rL.create_excel_report_from_container(w_overview.add_sheet('Overview'),
-                                          ['extId', 'firstName', 'middleName', 'lastName', 'gender', 'dob',
-                                           'socialgroup', 'location', 'latitude', 'longitude', 'altitude',
-                                           'accuracy', 'bIsToA'], records)
-    w_overview.save(os.path.join(output_dir, "Overview" + today.strftime("%Y-%m-%d") + ".xls"))
 
 
 def create_similar_individuals_report(open_hds_cursor, today, output_dir, threshold, ext_id_inclusion_list=None):
@@ -469,26 +472,19 @@ def create_revisit_guide(odk_cursor, odk_forms, open_hds_cursor, today, period, 
         w_revisit.save(os.path.join(output_dir, "LocationsToRevisit" + today.strftime("%Y-%m-%d") + ".xls"))
 
 
-def create_all_generic_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits,
-                               radius, output_dir):
-    create_operations_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits,
-                              radius, output_dir)
-    create_overview_report(open_hds_cursor, today, output_dir)
-    #create_similar_individuals_report(open_hds_cursor, today, output_dir, 0.95, ext_id_inclusion_list=None)
-
-
-def create_operations_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits,
-                              radius, output_dir):
+def create_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period, n_revisits, radius,
+                   output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     visits = get_all_visits(odk_cursor, all_odk_forms, open_hds_cursor)
-    create_summary_excel_report(visits, odk_cursor, open_hds_cursor, all_odk_forms, today, period, output_dir)
+    create_summary_reports(visits, odk_cursor, open_hds_cursor, all_odk_forms, today, period, output_dir)
     create_problem_report(visits, odk_cursor, all_odk_forms, open_hds_cursor, today, output_dir)
     visit_path_dir = os.path.join(output_dir, "recentlyVisited")
     if not os.path.exists(visit_path_dir):
         os.makedirs(visit_path_dir)
     create_fw_visit_path(odk_cursor, all_odk_forms, open_hds_db_name, today, period, visit_path_dir)
     create_revisit_guide(odk_cursor, all_odk_forms, open_hds_cursor, today, period, n_revisits, radius, output_dir)
+    #create_similar_individuals_report(open_hds_cursor, today, output_dir, 0.95, ext_id_inclusion_list=None)
 
 
 def houses_visited_with_missing_health_info_forms(odk_cursor, odk_forms, open_hds_db_name, houses_with_visit_form):
@@ -552,7 +548,7 @@ def generate_reports(odk_conn, all_odk_forms, open_hds_db_name, open_hds_conn, p
     report_path = os.path.join(root_dir, "static", "archive", report_name)
     filename = report_path+".zip"
     if not os.path.isfile(filename):
-        create_all_generic_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period,
+        create_reports(odk_cursor, all_odk_forms, open_hds_cursor, open_hds_db_name, today, period,
                                    revisits, radius, report_path)
         if site == "Rusinga":
             cluster_kml_dir = os.path.join(report_path, "notYetVisited")
