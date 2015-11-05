@@ -199,7 +199,7 @@ def create_similar_individuals_report(open_hds_cursor, today, output_dir, thresh
     individuals = rL.query_db_all(open_hds_cursor, "SELECT CONCAT(dob, firstName, lastName, middleName, "
                                                    "father_uuid, mother_uuid) AS id, uuid, extId FROM individual "
                                                    "WHERE uuid NOT LIKE 'Unknown Individual' "
-                                                   "ORDER BY RAND() LIMIT 20")
+                                                   "ORDER BY RAND()")
     ind_list = []
     for i, individual1 in enumerate(individuals):
         if ext_id_inclusion_list and individual1["extId"] not in ext_id_inclusion_list:

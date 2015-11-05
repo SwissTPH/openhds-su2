@@ -2,30 +2,30 @@
   "all_forms": {
     "death": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
       "individual": "INDIVIDUAL_ID",
-      "location": "LEFT(DEATH_REGISTRATION_CORE.VISIT_ID,9)",
+      "location": "LEFT(DEATH_REGISTRATION_CORE.OPENHDS_VISIT_ID,9)",
       "name": "DEATH_REGISTRATION_CORE"
     },
     "locationRegistration": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
-      "location": "LOCATION_ID",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
+      "location": "OPENHDS_LOCATION_ID",
       "name": "LOCATION_REGISTRATION_CORE"
     },
     "migrationIn": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
       "individual": "INDIVIDUAL_INFO_INDIVIDUAL_ID",
-      "location": "LOCATION_ID",
-      "migration_type": "MIGRATION_TYPE",
+      "location": "OPENHDS_LOCATION_ID",
+      "migration_type": "OPENHDS_MIGRATION_TYPE",
       "name": "IN_MIGRATION_CORE"
     },
     "migrationOut": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
-      "individual": "INDIVIDUAL_ID",
-      "location": "LEFT(OUT_MIGRATION_REGISTRATION_CORE.VISIT_ID,9)",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
+      "individual": "OPENHDS_INDIVIDUAL_ID",
+      "location": "LEFT(OUT_MIGRATION_REGISTRATION_CORE.OPENHDS_VISIT_ID,9)",
       "name": "OUT_MIGRATION_REGISTRATION_CORE",
       "reason": "REASON_FOR_OUT_MIGRATION",
       "is_internal_field": "NAME_OF_DESTINATION",
@@ -33,24 +33,24 @@
     },
     "pregnancyObservation": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
-      "individual": "INDIVIDUAL_ID",
-      "location": "LEFT(PREGNANCY_OBSERVATION_CORE.VISIT_ID,9)",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
+      "individual": "OPENHDS_INDIVIDUAL_ID",
+      "location": "LEFT(PREGNANCY_OBSERVATION_CORE.OPENHDS_VISIT_ID,9)",
       "name": "PREGNANCY_OBSERVATION_CORE"
     },
     "pregnancyOutcome": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
       "individual": "MOTHER_ID",
-      "location": "LEFT(PREGNANCY_OUTCOME_CORE.VISIT_ID,9)",
+      "location": "LEFT(PREGNANCY_OUTCOME_CORE.OPENHDS_OPENHDS_VISIT_ID,9)",
       "name": "PREGNANCY_OUTCOME_CORE"
     },
     "visit": {
       "date": "DATE(END)",
-      "fw": "FIELD_WORKER_ID",
-      "id": "VISIT_ID",
+      "fw": "OPENHDS_FIELD_WORKER_ID",
+      "id": "OPENHDS_VISIT_ID",
       "lat": "COORDINATES_LAT",
-      "location": "LOCATION_ID",
+      "location": "OPENHDS_LOCATION_ID",
       "lon": "COORDINATES_LNG",
       "name": "VISIT_REGISTRATION_CORE"
     }
